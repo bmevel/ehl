@@ -245,7 +245,9 @@ L=U->Lk+l;
 
 for (i=0; i<=L->ii; i++)
  {
+//BMM
  x= U->xa+i*L->hx ;
+
  for (j=0; j<=L->jj;j++)
  {
   y= U->ya + j*L->hy ;
@@ -587,9 +589,10 @@ Lc->Hm=1e5; /* arbitrary large value */
 
 for (ic=1; ic<=iic-1; ic++)
 {
+ //BMM
  x= U->xa +ic*Lc->hx ;
  for (jc=1;jc<=jjc-1;jc++)
- {
+  {
   y= U->ya + jc*Lc->hy  ;
   if (Lc->hfi[ic][jc]<Lc->Hm) Lc->Hm = Lc->hfi[ic][jc];
   if ((x==0)&&(y==0)) Lc->Hc = Lc->hfi[ic][jc];
@@ -780,14 +783,22 @@ printf("\nstartlevel?")      ; scanf("%d",&starl); starl = 2*starl-1;
 printf("\nhow many cycles?") ; scanf("%d",&ncy) ;
 printf("\ntype of cycle ?")  ; scanf("%d",&typecy) ;
 
+//BMM
+//printf("%s %f \n",'typecy', typecy);
+
+
 
 deepl=2*maxl-2;/* number of coarse grids in multi-integration */
 order=6;   /* order of transfer multi-integration*/
 
 xi_l=0.3; /* relaxation switch parameter */
+
+//BM
+xi_l = 0.20; /* relaxation switch parameter */
+
+
 urja=0.2; /* underrelaxation jacobi part */
 urgs=0.4; /* underrelaxation Gauss-Seidel part */
-
 
 
 /* factor for relaxation of force balance equation */
@@ -811,10 +822,13 @@ int i,j ;
 Level *L ;
 double x,y,dum;
 FILE *fp,*fh;
+FILE *fp0, *fh0;
 
 L=U->Lk+U->maxlev ;
 fp=fopen("P.dat", "w") ;
 fh=fopen("H.dat", "w") ;
+fp0 = fopen("P(y=0).dat", "w");
+fh0 = fopen("H(y=0).dat", "w");
 
 L->Hm=1e5; /* arbitrary large value */
 
@@ -834,13 +848,35 @@ for (i=0;i<=L->ii; i++)
   if (L->hfi[i][j]<L->Hm) L->Hm=L->hfi[i][j];
   if ((x==0)&&(y==0)) L->Hc=L->hfi[i][j];
   fprintf(fp,"%f %f %f\n",x,y,L->p[i][j]);
-  fprintf(fh,"%f %f %e\n",x,y,2.0-L->hfi[i][j]);
+  fprintf(fh,"%f %f %f\n",x,y,L->hfi[i][j]);
   }
   fprintf (fp, "\n") ;
   fprintf (fh, "\n") ;
 }
 fclose(fp) ;
 fclose(fh) ;
+
+//   Start output y= 0
+
+for (i = 0; i <= L->ii; i++)
+{
+	x = U->xa + i * L->hx;
+	 
+	y = 0.;
+		j=  L->jj/2;
+		if (L->hfi[i][j] < L->Hm) L->Hm = L->hfi[i][j];
+		if ((x == 0) && (y == 0)) L->Hc = L->hfi[i][j];
+		fprintf(fp0, "%f  %f\n", x, L->p[i][j]);
+		fprintf(fh0, "%f  %f\n", x, L->hfi[i][j]);
+	
+	fprintf(fp0, "\n");
+	fprintf(fh0, "\n");
+}
+fclose(fp0);
+fclose(fh0);
+
+
+
 
 /* output of film thickness values */;
 
@@ -1236,8 +1272,7 @@ void calchi(Stack *U, int lev)
 	Level *L;
 
 	ldeep = U->deep;
-	if (ldeep<0) ldeep=0;
-	if (ldeep>lev-1) ldeep=lev-1;
+	if (ldeep<0) ldeep=0;	if (ldeep>lev-1) ldeep=lev-1;
 	fillk(U, lev);
 	if (U->od == 4) { for (l = lev; l >= lev - ldeep + 1; l--) sto6k1(U, l); }
     for (l=1;l<=ldeep; l+=2)
@@ -1246,18 +1281,19 @@ void calchi(Stack *U, int lev)
 	}
 	calcku(U,lev-ldeep);
 	for (l=ldeep;l>=1;l-=2)
-	{
+	{	
 		if (U->od == 4) { refine6x(U,lev-l+1); refine6y(U,lev-l+2);}
 	}
-
+	
 	L = U->Lk+lev;
-
+    
 		/* compute extra point for 2nd order discretization at first line */
 
 		for (i=-1; i<=L->ii;i++)
 			for (j=0; j<=L->jj; j++)
 				L->hfi[i][j] = U->h0+2.0/pi/pi*L->w[i][j]+L->hrhs[i][j];
-
+				//BM
+                //printf("\n%s %e %e %e %e" , "calchi", L->hfi[i][j], U->h0, L->w[i][j] ,L->hrhs[i][j] );
 }
 
 
@@ -1301,7 +1337,7 @@ for (i=0;i<=L->ii-2;i++)
 }
 
 for (i=1;i<=ii-1;i++)
-{
+    {
     r0=rho(P[i][j]);
     H3=r0*H[i][j]*H[i][j]*H[i][j]*reta(P[i][j]);
 
@@ -1382,23 +1418,27 @@ if (i<ii-1) A[i-1][ml+1] =  xi_e-2*rpi2*dHxp;
 if (i<ii-2) A[i-1][ml+2] = -2*rpi2*dHxpp;
  }
 }
-    else
-    {
-    Qx=(xi_e*P[i+1][j  ]  -(xi_e+xi_w)*P[i][j] + xi_w*P[i-1][j ]);
-    Qy=(xi_n*P[i  ][j+1]  -(xi_n+xi_s)*P[i][j] + xi_s*P[i  ][j-1]);
+else
+{
+Qx=(xi_e*P[i+1][j  ]  -(xi_e+xi_w)*P[i][j] + xi_w*P[i-1][j ]);
+Qy=(xi_n*P[i  ][j+1]  -(xi_n+xi_s)*P[i][j] + xi_s*P[i  ][j-1]);
 
 
-    Y[i-1]=f[i][j] -Qx -Qy + Hx;
-    A[i-1][ml] =-1.25*(xi_w+xi_e+xi_s+xi_w)-2*rpi2*dHx ;
-    if((Pj[i-2][j]>0)&&(Pj[i-1][j]>0)&&(Pj[i+1][j]>0)&&(Pj[i+2][j]>0))
-    {
-    if (i>1)    A[i-1][ml-1]= xi_w+(xi_n+xi_e+xi_e+xi_w)*0.25-2*rpi2*dHxm;
-    if (i>2)    A[i-1][ml-2]=-0.25*xi_w-2*rpi2*dHxmm;
-    if (i>3)    A[i-1][ml-3]=-2*rpi2*dHxm3 ;
-    if (i<ii-1) A[i-1][ml+1]= xi_e+(xi_n+xi_e+xi_s+xi_w)*0.25-2*rpi2*dHxp;
-    if (i<ii-2) A[i-1][ml+2]=-0.25*xi_e-2*rpi2*dHxpp;
-    }
-   }
+Y[i-1]=f[i][j] -Qx -Qy + Hx;
+A[i-1][ml] =-1.25*(xi_w+xi_e+xi_s+xi_w)-2*rpi2*dHx ;
+if ((Pj[i-2][j]>0)&&(Pj[i-1][j]>0)&&(Pj[i+1][j]>0)&&(Pj[i+2][j]>0))
+{
+if (i>1)    A[i-1][ml-1]= xi_w+(xi_n+xi_e+xi_e+xi_w)*0.25-2*rpi2*dHxm;
+if (i>2)    A[i-1][ml-2]=-0.25*xi_w-2*rpi2*dHxmm;
+if (i>3)    A[i-1][ml-3]=-2*rpi2*dHxm3 ;
+//BM
+if (i<ii-1) A[i-1][ml+1]= xi_e+(xi_n+xi_e+xi_s+xi_w)*0.25-2*rpi2*dHxp;
+
+
+if (i<ii - 1) A[i - 1][ml + 1] = xi_e + (xi_n + xi_e + xi_e + xi_w)*0.25 - 2 * rpi2*dHxp;
+if (i<ii-2) A[i-1][ml+2]=-0.25*xi_e-2*rpi2*dHxpp;
+}
+}
 }
 }
 
